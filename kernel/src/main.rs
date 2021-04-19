@@ -22,34 +22,26 @@ fn hlt() {
     }
 }
 
-static mut FRAME_BUFFER_CONFIG: &'static frame_buffer_config::FrameBufferConfig =
-    &frame_buffer_config::FrameBufferConfig {
-        frame_buffer: 0 as *mut u8,
-        pixels_per_scan_line: 0,
-        horizontal_resolution: 0,
-        vertial_resolution: 0,
-        pixel_format: frame_buffer_config::PixelFormat::PixelRGBResv8BitPerColor,
-    };
-static mut PIXEL_WRITER: &dyn graphics::PixelWriter = &graphics::RGBResv8BitPerColorPixelWriter {};
+static mut FRAME_BUFFER_CONFIG: Option<&'static frame_buffer_config::FrameBufferConfig> = None;
+static mut PIXEL_WRITER: Option<&dyn graphics::PixelWriter> = None;
 
 #[no_mangle]
 pub extern "C" fn KernelMain(
     frame_buffer_config: &'static frame_buffer_config::FrameBufferConfig,
 ) -> ! {
     unsafe {
-        FRAME_BUFFER_CONFIG = frame_buffer_config;
-
+        FRAME_BUFFER_CONFIG = Some(frame_buffer_config);
         PIXEL_WRITER = match frame_buffer_config.pixel_format {
             frame_buffer_config::PixelFormat::PixelRGBResv8BitPerColor => {
-                &graphics::RGBResv8BitPerColorPixelWriter {}
+                Some(&graphics::RGBResv8BitPerColorPixelWriter {})
             }
             frame_buffer_config::PixelFormat::PixelBGRResv8BitPerColor => {
-                &graphics::BGRResv8BitPerColorPixelWriter {}
+                Some(&graphics::BGRResv8BitPerColorPixelWriter {})
             }
         };
     }
 
-    let pixel_writer = unsafe { PIXEL_WRITER };
+    let pixel_writer = unsafe { PIXEL_WRITER.unwrap() };
 
     let bg_color = graphics::PixelColor {
         r: 255,

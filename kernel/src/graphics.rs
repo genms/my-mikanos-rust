@@ -13,9 +13,10 @@ pub struct BGRResv8BitPerColorPixelWriter {}
 pub trait PixelWriter {
     fn pixel_at(&self, x: i32, y: i32) -> *mut u8 {
         unsafe {
-            FRAME_BUFFER_CONFIG
+            let frame_buffer_config = FRAME_BUFFER_CONFIG.unwrap();
+            frame_buffer_config
                 .frame_buffer
-                .offset(4 * (FRAME_BUFFER_CONFIG.pixels_per_scan_line as i32 * y + x) as isize)
+                .offset(4 * (frame_buffer_config.pixels_per_scan_line as i32 * y + x) as isize)
         }
     }
 
