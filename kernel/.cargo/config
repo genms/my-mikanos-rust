@@ -1,0 +1,17 @@
+[build]
+target = "x86_64-unknown-linux-gnu"
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    # Build Options
+    "-C", "linker=ld.lld",
+    "-C", "no-redzone=yes",
+    "-C", "relocation-model=static",
+
+    # Linker Options
+    "-C", "link-arg=--entry=KernelMain",
+    "-C", "link-arg=--image-base=0x100000",
+    # "-C", "link-arg=-n",
+    # "-C", "link-arg=-nmagic",
+    "-C", "link-arg=-znorelro",
+]
