@@ -1,16 +1,25 @@
 #![no_std]
 #![no_main]
+#![feature(lang_items)]
 #![feature(asm)]
 
 use core::panic::PanicInfo;
+use core::str;
+use core::fmt::Write;
 
 mod font;
 mod frame_buffer_config;
 mod graphics;
 mod hankaku;
+mod utils;
+
+use utils::fmt::Wrapper;
+
+#[lang = "eh_personality"]
+extern "C" fn eh_personality() {}
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(_: &PanicInfo) -> ! {
     loop {
         hlt()
     }
@@ -67,6 +76,15 @@ pub extern "C" fn KernelMain(
         font::write_ascii(pixel_writer, 8 * i, 50, c, &font_color);
         i = i + 1;
     }
+
+    let font_color = graphics::PixelColor { r: 0, g: 0, b: 255 };
+    font::write_string(pixel_writer, 0, 66, "Hello, world!", &font_color);
+
+    let mut buf = [0 as u8; 20];
+    write!(Wrapper::new(&mut buf), "1 + 2 = {}", 1 + 2).expect("write!");
+    let txt = str::from_utf8(&buf).unwrap();
+    let font_color = graphics::PixelColor { r: 0, g: 0, b: 0 };
+    font::write_string(pixel_writer, 0, 82, txt, &font_color);
 
     loop {
         hlt()

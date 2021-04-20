@@ -1,10 +1,10 @@
 use crate::graphics;
 use crate::hankaku;
 
-pub unsafe fn get_font(c: char) -> Result<*mut u8, i32> {
+pub unsafe fn get_font(c: char) -> Result<*mut u8, &'static str> {
     let index = 16 * c as usize;
     if index >= &hankaku::_binary_hankaku_bin_size as *const u8 as usize {
-        return Err(1);
+        return Err("get_font");
     }
     let start = &hankaku::_binary_hankaku_bin_start as *const u8 as *mut u8;
     Ok(start.offset(index as isize))
@@ -33,5 +33,11 @@ pub fn write_ascii(
                 writer.write(x + dx, y + dy, color);
             }
         }
+    }
+}
+
+pub fn write_string(writer: &dyn graphics::PixelWriter, x: i32, y: i32, s: &str, color: &graphics::PixelColor) {
+    for (i, c) in s.chars().enumerate() {
+        write_ascii(writer, x + 8 * i as i32, y, c, color);
     }
 }
