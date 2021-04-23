@@ -7,6 +7,7 @@ use core::panic::PanicInfo;
 use core::str;
 use core::fmt::Write;
 
+mod console;
 mod font;
 mod frame_buffer_config;
 mod graphics;
@@ -63,28 +64,15 @@ pub extern "C" fn KernelMain(
         }
     }
 
-    let rect_color = graphics::PixelColor { r: 0, g: 255, b: 0 };
-    for x in 0..200 {
-        for y in 0..100 {
-            pixel_writer.write(x, y, &rect_color);
-        }
-    }
-
     let font_color = graphics::PixelColor { r: 0, g: 0, b: 0 };
-    let mut i = 0;
-    for c in '!'..='~' {
-        font::write_ascii(pixel_writer, 8 * i, 50, c, &font_color);
-        i = i + 1;
+    let mut console = console::Console::new(pixel_writer, &font_color, &bg_color);
+
+    for i in 0..27 {
+        let mut buf = [0 as u8; 128];
+        write!(Wrapper::new(&mut buf), "line {}\n", i).expect("write!");
+        let txt = str::from_utf8(&buf).unwrap();
+        console.put_string(txt);
     }
-
-    let font_color = graphics::PixelColor { r: 0, g: 0, b: 255 };
-    font::write_string(pixel_writer, 0, 66, "Hello, world!", &font_color);
-
-    let mut buf = [0 as u8; 20];
-    write!(Wrapper::new(&mut buf), "1 + 2 = {}", 1 + 2).expect("write!");
-    let txt = str::from_utf8(&buf).unwrap();
-    let font_color = graphics::PixelColor { r: 0, g: 0, b: 0 };
-    font::write_string(pixel_writer, 0, 82, txt, &font_color);
 
     loop {
         hlt()
