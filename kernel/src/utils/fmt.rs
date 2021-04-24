@@ -21,7 +21,9 @@ impl<'a> core::fmt::Write for Wrapper<'a> {
         // Skip over already-copied data
         let remainder = &mut self.buf[self.offset..];
         // Check if there is space remaining (return error instead of panicking)
-        if remainder.len() < bytes.len() { return Err(core::fmt::Error); }
+        if remainder.len() < bytes.len() {
+            return Err(core::fmt::Error);
+        }
         // Make the two slices the same length
         let remainder = &mut remainder[..bytes.len()];
         // Copy

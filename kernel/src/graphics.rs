@@ -20,31 +20,28 @@ pub trait PixelWriter {
         }
     }
 
+    fn read_mut(&self, x: i32, y: i32) -> &mut [u8; 4] {
+        let p = self.pixel_at(x, y);
+        unsafe { &mut *(p as *mut [u8; 4]) }
+    }
+
     fn write(&self, x: i32, y: i32, c: &PixelColor);
 }
 
 impl PixelWriter for RGBResv8BitPerColorPixelWriter {
     fn write(&self, x: i32, y: i32, c: &PixelColor) {
-        let p = self.pixel_at(x, y);
-        unsafe {
-            let pg = p.offset(1);
-            let pb = p.offset(2);
-            *p = c.r;
-            *pg = c.g;
-            *pb = c.b;
-        }
+        let pixel = self.read_mut(x, y);
+        (*pixel)[0] = c.r;
+        (*pixel)[1] = c.g;
+        (*pixel)[2] = c.b;
     }
 }
 
 impl PixelWriter for BGRResv8BitPerColorPixelWriter {
     fn write(&self, x: i32, y: i32, c: &PixelColor) {
-        let p = self.pixel_at(x, y);
-        unsafe {
-            let pg = p.offset(1);
-            let pr = p.offset(2);
-            *p = c.b;
-            *pg = c.g;
-            *pr = c.r;
-        }
+        let pixel = self.read_mut(x, y);
+        (*pixel)[0] = c.b;
+        (*pixel)[1] = c.g;
+        (*pixel)[2] = c.r;
     }
 }

@@ -4,7 +4,7 @@ use crate::graphics;
 use crate::font;
 
 pub struct Console<'a> {
-    writer: &'static dyn graphics::PixelWriter,
+    writer: &'a dyn graphics::PixelWriter,
     fg_color: &'a graphics::PixelColor,
     bg_color: &'a graphics::PixelColor,
     buffer: [[u8; (Console::COLUMNS + 1) as usize]; Console::ROWS as usize],
@@ -16,7 +16,11 @@ impl<'a> Console<'a> {
     pub const ROWS: i32 = 25;
     pub const COLUMNS: i32 = 80;
 
-    pub fn new(writer: &'static dyn graphics::PixelWriter, fg_color: &'a graphics::PixelColor, bg_color: &'a graphics::PixelColor) -> Self {
+    pub fn new(
+        writer: &'static dyn graphics::PixelWriter,
+        fg_color: &'a graphics::PixelColor,
+        bg_color: &'a graphics::PixelColor,
+    ) -> Self {
         Console {
             writer,
             fg_color,
@@ -34,7 +38,13 @@ impl<'a> Console<'a> {
             } else if byte == '\n' as u8 {
                 self.newline();
             } else if self.cursor_column < Self::COLUMNS - 1 {
-                font::write_ascii(self.writer, 8 * self.cursor_column, 16 * self.cursor_row, byte as char, self.fg_color);
+                font::write_ascii(
+                    self.writer,
+                    8 * self.cursor_column,
+                    16 * self.cursor_row,
+                    byte as char,
+                    self.fg_color,
+                );
                 self.buffer[self.cursor_row as usize][self.cursor_column as usize] = byte;
                 self.cursor_column += 1;
             }
@@ -54,7 +64,8 @@ impl<'a> Console<'a> {
             for row in 0..(Self::ROWS - 1) {
                 let rng = ((row + 1) as usize)..((row + 2) as usize);
                 self.buffer.copy_within(rng, row as usize);
-                font::write_string(self.writer, 0, 16 * row, str::from_utf8(&self.buffer[row as usize]).unwrap(), self.fg_color);
+                let txt = str::from_utf8(&self.buffer[row as usize]).unwrap();
+                font::write_string(self.writer, 0, 16 * row, txt, self.fg_color);
             }
             let buffer_last_row = &mut self.buffer[(Self::ROWS - 1) as usize];
             buffer_last_row.fill(0);
