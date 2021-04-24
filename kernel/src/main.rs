@@ -15,6 +15,7 @@ mod hankaku;
 mod utils;
 
 use frame_buffer_config::FrameBufferConfig;
+use graphics::*;
 use utils::fmt::Wrapper;
 
 #[lang = "eh_personality"]
@@ -46,17 +47,42 @@ macro_rules! printk {
     };
 }
 
-static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
-static mut PIXEL_WRITER: Option<&dyn graphics::PixelWriter> = None;
+const DESKTOP_BG_COLOR: PixelColor = PixelColor(45, 118, 237);
+const DESKTOP_FG_COLOR: PixelColor = PixelColor(255, 255, 255);
 
-static mut CONSOLE: console::Console = console::Console::new(
-    graphics::PixelColor { r: 0, g: 0, b: 0 },
-    graphics::PixelColor {
-        r: 255,
-        g: 255,
-        b: 255,
-    },
-);
+//const MOUSE_CURSOR_WIDTH: i32 = 15;
+//const MOUSE_CURSOR_HEIGHT: i32 = 24;
+const MOUSE_CURSOR_SHAPE: [&str; 24] = [
+    "@              ",
+    "@@             ",
+    "@.@            ",
+    "@..@           ",
+    "@...@          ",
+    "@....@         ",
+    "@.....@        ",
+    "@......@       ",
+    "@.......@      ",
+    "@........@     ",
+    "@.........@    ",
+    "@..........@   ",
+    "@...........@  ",
+    "@............@ ",
+    "@......@@@@@@@@",
+    "@......@       ",
+    "@....@@.@      ",
+    "@...@ @.@      ",
+    "@..@   @.@     ",
+    "@.@    @.@     ",
+    "@@      @.@    ",
+    "@       @.@    ",
+    "         @.@   ",
+    "         @@@   ",
+];
+
+static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
+static mut PIXEL_WRITER: Option<&dyn PixelWriter> = None;
+
+static mut CONSOLE: console::Console = console::Console::new(DESKTOP_FG_COLOR, DESKTOP_BG_COLOR);
 
 #[no_mangle]
 pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) -> ! {
@@ -64,29 +90,61 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         FRAME_BUFFER_CONFIG = Some(frame_buffer_config);
         PIXEL_WRITER = match frame_buffer_config.pixel_format {
             frame_buffer_config::PixelFormat::PixelRGBResv8BitPerColor => {
-                Some(&graphics::RGBResv8BitPerColorPixelWriter {})
+                Some(&RGBResv8BitPerColorPixelWriter {})
             }
             frame_buffer_config::PixelFormat::PixelBGRResv8BitPerColor => {
-                Some(&graphics::BGRResv8BitPerColorPixelWriter {})
+                Some(&BGRResv8BitPerColorPixelWriter {})
             }
         };
     }
 
     let pixel_writer = unsafe { PIXEL_WRITER.unwrap() };
 
-    let bg_color = graphics::PixelColor {
-        r: 255,
-        g: 255,
-        b: 255,
-    };
-    for x in 0..frame_buffer_config.horizontal_resolution as i32 {
-        for y in 0..frame_buffer_config.vertial_resolution as i32 {
-            pixel_writer.write(x, y, &bg_color);
-        }
-    }
+    let frame_width = frame_buffer_config.horizontal_resolution as i32;
+    let frame_height = frame_buffer_config.vertical_resolution as i32;
+    fill_rectangle(
+        pixel_writer,
+        &Vector2D(0, 0),
+        &Vector2D(frame_width, frame_height - 50),
+        &DESKTOP_BG_COLOR,
+    );
+    fill_rectangle(
+        pixel_writer,
+        &Vector2D(0, frame_height - 50),
+        &Vector2D(frame_width, 50),
+        &PixelColor(1, 8, 17),
+    );
+    fill_rectangle(
+        pixel_writer,
+        &Vector2D(0, frame_height - 50),
+        &Vector2D(frame_width / 5, 50),
+        &PixelColor(80, 80, 80),
+    );
+    draw_rectangle(
+        pixel_writer,
+        &Vector2D(10, frame_height - 40),
+        &Vector2D(30, 30),
+        &PixelColor(160, 160, 160),
+    );
 
-    for i in 0..27 {
-        printk!("line {}\n", i);
+    printk!("Welcome to MikanOS!\n");
+
+    for (dy, row) in MOUSE_CURSOR_SHAPE.iter().enumerate() {
+        for (dx, u) in row.as_bytes().iter().enumerate() {
+            match *u as char {
+                '@' => {
+                    pixel_writer.write(200 + dx as i32, 100 + dy as i32, &PixelColor(0, 0, 0));
+                }
+                '.' => {
+                    pixel_writer.write(
+                        200 + dx as i32,
+                        100 + dy as i32,
+                        &PixelColor(255, 255, 255),
+                    );
+                }
+                _ => {}
+            };
+        }
     }
 
     loop {
