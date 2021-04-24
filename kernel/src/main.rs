@@ -3,9 +3,9 @@
 #![feature(lang_items)]
 #![feature(asm)]
 
+use core::fmt::Write;
 use core::panic::PanicInfo;
 use core::str;
-use core::fmt::Write;
 
 mod console;
 mod font;
@@ -32,8 +32,28 @@ fn hlt() {
     }
 }
 
+macro_rules! printk {
+    ($($x:expr),*) => {
+        let mut buf = [0 as u8; console::Console::ROWS];
+        write!(Wrapper::new(&mut buf), $($x),*).expect("printk!");
+        let txt = str::from_utf8(&buf).unwrap();
+        unsafe {
+            CONSOLE.put_string(txt);
+        }
+    };
+}
+
 static mut FRAME_BUFFER_CONFIG: Option<&'static frame_buffer_config::FrameBufferConfig> = None;
 static mut PIXEL_WRITER: Option<&dyn graphics::PixelWriter> = None;
+
+static mut CONSOLE: console::Console = console::Console::new(
+    graphics::PixelColor { r: 0, g: 0, b: 0 },
+    graphics::PixelColor {
+        r: 255,
+        g: 255,
+        b: 255,
+    },
+);
 
 #[no_mangle]
 pub extern "C" fn KernelMain(
@@ -64,14 +84,8 @@ pub extern "C" fn KernelMain(
         }
     }
 
-    let font_color = graphics::PixelColor { r: 0, g: 0, b: 0 };
-    let mut console = console::Console::new(pixel_writer, &font_color, &bg_color);
-
     for i in 0..27 {
-        let mut buf = [0 as u8; 128];
-        write!(Wrapper::new(&mut buf), "line {}\n", i).expect("write!");
-        let txt = str::from_utf8(&buf).unwrap();
-        console.put_string(txt);
+        printk!("line {}\n", i);
     }
 
     loop {
