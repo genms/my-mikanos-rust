@@ -14,6 +14,7 @@ mod graphics;
 mod hankaku;
 mod utils;
 
+use frame_buffer_config::FrameBufferConfig;
 use utils::fmt::Wrapper;
 
 #[lang = "eh_personality"]
@@ -34,16 +35,18 @@ fn hlt() {
 
 macro_rules! printk {
     ($($x:expr),*) => {
-        let mut buf = [0 as u8; console::Console::ROWS];
-        write!(Wrapper::new(&mut buf), $($x),*).expect("printk!");
-        let txt = str::from_utf8(&buf).unwrap();
-        unsafe {
-            CONSOLE.put_string(txt);
+        {
+            let mut buf = [0u8; 1024];
+            write!(Wrapper::new(&mut buf), $($x),*).expect("printk!");
+            let txt = str::from_utf8(&buf).unwrap();
+            unsafe {
+                CONSOLE.put_string(txt);
+            }
         }
     };
 }
 
-static mut FRAME_BUFFER_CONFIG: Option<&'static frame_buffer_config::FrameBufferConfig> = None;
+static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
 static mut PIXEL_WRITER: Option<&dyn graphics::PixelWriter> = None;
 
 static mut CONSOLE: console::Console = console::Console::new(
@@ -56,9 +59,7 @@ static mut CONSOLE: console::Console = console::Console::new(
 );
 
 #[no_mangle]
-pub extern "C" fn KernelMain(
-    frame_buffer_config: &'static frame_buffer_config::FrameBufferConfig,
-) -> ! {
+pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) -> ! {
     unsafe {
         FRAME_BUFFER_CONFIG = Some(frame_buffer_config);
         PIXEL_WRITER = match frame_buffer_config.pixel_format {
