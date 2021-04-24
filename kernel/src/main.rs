@@ -47,8 +47,8 @@ macro_rules! printk {
     };
 }
 
-const DESKTOP_BG_COLOR: PixelColor = PixelColor(45, 118, 237);
-const DESKTOP_FG_COLOR: PixelColor = PixelColor(255, 255, 255);
+const DESKTOP_BG_COLOR: PixelColor = PixelColor::new(45, 118, 237);
+const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 
 //const MOUSE_CURSOR_WIDTH: i32 = 15;
 //const MOUSE_CURSOR_HEIGHT: i32 = 24;
@@ -104,27 +104,27 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
     let frame_height = frame_buffer_config.vertical_resolution as i32;
     fill_rectangle(
         pixel_writer,
-        &Vector2D(0, 0),
-        &Vector2D(frame_width, frame_height - 50),
+        &Vector2D::new(0, 0),
+        &Vector2D::new(frame_width, frame_height - 50),
         &DESKTOP_BG_COLOR,
     );
     fill_rectangle(
         pixel_writer,
-        &Vector2D(0, frame_height - 50),
-        &Vector2D(frame_width, 50),
-        &PixelColor(1, 8, 17),
+        &Vector2D::new(0, frame_height - 50),
+        &Vector2D::new(frame_width, 50),
+        &PixelColor::new(1, 8, 17),
     );
     fill_rectangle(
         pixel_writer,
-        &Vector2D(0, frame_height - 50),
-        &Vector2D(frame_width / 5, 50),
-        &PixelColor(80, 80, 80),
+        &Vector2D::new(0, frame_height - 50),
+        &Vector2D::new(frame_width / 5, 50),
+        &PixelColor::new(80, 80, 80),
     );
     draw_rectangle(
         pixel_writer,
-        &Vector2D(10, frame_height - 40),
-        &Vector2D(30, 30),
-        &PixelColor(160, 160, 160),
+        &Vector2D::new(10, frame_height - 40),
+        &Vector2D::new(30, 30),
+        &PixelColor::new(160, 160, 160),
     );
 
     printk!("Welcome to MikanOS!\n");
@@ -133,13 +133,13 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         for (dx, u) in row.as_bytes().iter().enumerate() {
             match *u as char {
                 '@' => {
-                    pixel_writer.write(200 + dx as i32, 100 + dy as i32, &PixelColor(0, 0, 0));
+                    pixel_writer.write(200 + dx as i32, 100 + dy as i32, &PixelColor::new(0, 0, 0));
                 }
                 '.' => {
                     pixel_writer.write(
                         200 + dx as i32,
                         100 + dy as i32,
-                        &PixelColor(255, 255, 255),
+                        &PixelColor::new(255, 255, 255),
                     );
                 }
                 _ => {}

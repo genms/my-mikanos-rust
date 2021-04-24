@@ -1,6 +1,16 @@
 use crate::FRAME_BUFFER_CONFIG;
 
-pub struct PixelColor(pub u8, pub u8, pub u8);
+pub struct PixelColor {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl PixelColor {
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        PixelColor { r, g, b }
+    }
+}
 
 pub struct RGBResv8BitPerColorPixelWriter {}
 pub struct BGRResv8BitPerColorPixelWriter {}
@@ -26,22 +36,31 @@ pub trait PixelWriter {
 impl PixelWriter for RGBResv8BitPerColorPixelWriter {
     fn write(&self, x: i32, y: i32, c: &PixelColor) {
         let pixel = self.read_mut(x, y);
-        (*pixel)[0] = c.0;
-        (*pixel)[1] = c.1;
-        (*pixel)[2] = c.2;
+        (*pixel)[0] = c.r;
+        (*pixel)[1] = c.g;
+        (*pixel)[2] = c.b;
     }
 }
 
 impl PixelWriter for BGRResv8BitPerColorPixelWriter {
     fn write(&self, x: i32, y: i32, c: &PixelColor) {
         let pixel = self.read_mut(x, y);
-        (*pixel)[0] = c.2;
-        (*pixel)[1] = c.1;
-        (*pixel)[2] = c.0;
+        (*pixel)[0] = c.b;
+        (*pixel)[1] = c.g;
+        (*pixel)[2] = c.r;
     }
 }
 
-pub struct Vector2D<T>(pub T, pub T);
+pub struct Vector2D<T> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T> Vector2D<T> {
+    pub const fn new(x: T, y: T) -> Self {
+        Vector2D::<T> { x, y }
+    }
+}
 
 pub fn draw_rectangle(
     writer: &dyn PixelWriter,
@@ -49,13 +68,13 @@ pub fn draw_rectangle(
     size: &Vector2D<i32>,
     c: &PixelColor,
 ) {
-    for dx in 0..size.0 {
-        writer.write(pos.0 + dx, pos.1, c);
-        writer.write(pos.0 + dx, pos.1 + size.1 - 1, c);
+    for dx in 0..size.x {
+        writer.write(pos.x + dx, pos.y, c);
+        writer.write(pos.x + dx, pos.y + size.y - 1, c);
     }
-    for dy in 1..(size.1 - 1) {
-        writer.write(pos.0, pos.1 + dy, c);
-        writer.write(pos.0 + size.0 - 1, pos.1 + dy, c);
+    for dy in 1..(size.y - 1) {
+        writer.write(pos.x, pos.y + dy, c);
+        writer.write(pos.x + size.x - 1, pos.y + dy, c);
     }
 }
 
@@ -65,9 +84,9 @@ pub fn fill_rectangle(
     size: &Vector2D<i32>,
     c: &PixelColor,
 ) {
-    for dy in 0..size.1 {
-        for dx in 0..size.0 {
-            writer.write(pos.0 + dx, pos.1 + dy, c);
+    for dy in 0..size.y {
+        for dx in 0..size.x {
+            writer.write(pos.x + dx, pos.y + dy, c);
         }
     }
 }
