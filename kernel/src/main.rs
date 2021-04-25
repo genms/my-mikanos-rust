@@ -7,11 +7,13 @@ use core::fmt::Write;
 use core::panic::PanicInfo;
 use core::str;
 
+mod asm;
 mod console;
 mod font;
 mod frame_buffer_config;
 mod graphics;
 mod hankaku;
+mod pci;
 mod utils;
 
 use frame_buffer_config::FrameBufferConfig;
@@ -127,7 +129,7 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         &PixelColor::new(160, 160, 160),
     );
 
-    printk!("Welcome to MikanOS!\n");
+    printk!("Welcome to MikanOS in Rust!\n");
 
     for (dy, row) in MOUSE_CURSOR_SHAPE.iter().enumerate() {
         for (dx, u) in row.as_bytes().iter().enumerate() {
@@ -145,6 +147,29 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
                 _ => {}
             };
         }
+    }
+
+    printk!(
+        "scan_all_bus: {}\n",
+        match pci::scan_all_bus() {
+            Ok(()) => "Ok",
+            Err(err) => err.to_string(),
+        }
+    );
+
+    for i in 0..pci::num_device() {
+        let dev = pci::device(i);
+        let vendor_id = pci::read_vendor_id(dev.bus, dev.device, dev.function);
+        let class_code = pci::read_class_code(dev.bus, dev.device, dev.function);
+        printk!(
+            "{}.{}.{}: vend {:04x}, class {:08x}, head {:02x}\n",
+            dev.bus,
+            dev.device,
+            dev.function,
+            vendor_id,
+            class_code,
+            dev.header_type
+        );
     }
 
     loop {
