@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use core::fmt;
 use crate::asm;
 
 const CONFIG_ADDRESS: u16 = 0x0cf8;
@@ -12,13 +13,9 @@ pub enum Error {
     LastOfCode,
 }
 
-impl Error {
-    pub fn to_string(&self) -> &'static str {
-        match self {
-            Self::Full => "Full",
-            Self::Empty => "Empty",
-            Self::LastOfCode => "LastOfCode",
-        }
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

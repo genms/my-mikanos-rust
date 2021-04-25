@@ -149,14 +149,11 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         }
     }
 
-    printk!(
-        "scan_all_bus: {}\n",
-        match pci::scan_all_bus() {
-            Ok(()) => "Ok",
-            Err(err) => err.to_string(),
-        }
-    );
-
+    match pci::scan_all_bus() {
+        Ok(()) => printk!("scan_all_bus: Ok\n"),
+        Err(err) => printk!("scan_all_bus: {}\n", err),
+    };
+    
     for i in 0..pci::num_device() {
         let dev = pci::device(i);
         let vendor_id = pci::read_vendor_id(dev.bus, dev.device, dev.function);
