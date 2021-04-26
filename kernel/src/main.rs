@@ -153,9 +153,9 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         Ok(()) => printk!("scan_all_bus: Ok\n"),
         Err(err) => printk!("scan_all_bus: {}\n", err),
     };
-    
-    for i in 0..pci::num_device() {
-        let dev = pci::device(i);
+
+    for i in unsafe { 0..pci::NUM_DEVICE } {
+        let dev = unsafe { pci::DEVICES[i] };
         let vendor_id = pci::read_vendor_id(dev.bus, dev.device, dev.function);
         let class_code = pci::read_class_code(dev.bus, dev.device, dev.function);
         printk!(

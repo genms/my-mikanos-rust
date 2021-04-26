@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
-use core::fmt;
 use crate::asm;
+use bit_field::BitField;
+use core::fmt;
 
 const CONFIG_ADDRESS: u16 = 0x0cf8;
 const CONFIG_DATA: u16 = 0x0cfc;
@@ -20,13 +21,17 @@ impl fmt::Display for Error {
 }
 
 fn make_address(bus: u8, device: u8, function: u8, reg_addr: u8) -> u32 {
-    let shl = |x: u32, bits: u32| -> u32 { x << bits };
+    let mut reg_addr_for_address = reg_addr;
+    reg_addr_for_address.set_bits(0..=1, 0);
 
-    shl(1, 31)
-        | shl(bus as u32, 16)
-        | shl(device as u32, 11)
-        | shl(function as u32, 8)
-        | (reg_addr & 0xfc) as u32
+    let mut address = 0u32;
+    address
+        .set_bit(31, true)
+        .set_bits(16..=23, bus as u32)
+        .set_bits(11..=15, device as u32)
+        .set_bits(8..=10, function as u32)
+        .set_bits(0..=7, reg_addr_for_address as u32);
+    address
 }
 
 fn add_device(bus: u8, device: u8, function: u8, header_type: u8) -> Result<(), Error> {
@@ -51,12 +56,12 @@ fn scan_function(bus: u8, device: u8, function: u8) -> Result<(), Error> {
     add_device(bus, device, function, header_type)?;
 
     let class_code = read_class_code(bus, device, function);
-    let base = (class_code >> 24 & 0xff) as u8;
-    let sub = (class_code >> 16 & 0xff) as u8;
+    let base = class_code.get_bits(24..=31) as u8;
+    let sub = class_code.get_bits(16..=23) as u8;
 
     if base == 0x06 && sub == 0x04 {
         let bus_numbers = read_bus_numbers(bus, device, function);
-        let secondary_bus = (bus_numbers >> 8 & 0xff) as u8;
+        let secondary_bus = bus_numbers.get_bits(8..=15) as u8;
         return scan_bus(secondary_bus);
     }
 
@@ -70,7 +75,7 @@ fn scan_device(bus: u8, device: u8) -> Result<(), Error> {
     }
 
     for function in 1..8 {
-        if read_vendor_id(bus, device, function) == 0xffffu16 {
+        if read_vendor_id(bus, device, function) == 0xffff {
             continue;
         }
         scan_function(bus, device, function)?;
@@ -80,7 +85,7 @@ fn scan_device(bus: u8, device: u8) -> Result<(), Error> {
 
 fn scan_bus(bus: u8) -> Result<(), Error> {
     for device in 0..32 {
-        if read_vendor_id(bus, device, 0) == 0xffffu16 {
+        if read_vendor_id(bus, device, 0) == 0xffff {
             continue;
         }
         scan_device(bus, device)?;
@@ -106,17 +111,17 @@ pub fn read_data() -> u32 {
 
 pub fn read_vendor_id(bus: u8, device: u8, function: u8) -> u16 {
     write_address(make_address(bus, device, function, 0x00));
-    (read_data() & 0xffff) as u16
+    read_data().get_bits(0..=15) as u16
 }
 
 pub fn read_device_id(bus: u8, device: u8, function: u8) -> u16 {
     write_address(make_address(bus, device, function, 0x00));
-    (read_data() >> 16) as u16
+    read_data().get_bits(16..=31) as u16
 }
 
 pub fn read_header_type(bus: u8, device: u8, function: u8) -> u8 {
     write_address(make_address(bus, device, function, 0x0c));
-    (read_data() >> 16 & 0xff) as u8
+    read_data().get_bits(16..=23) as u8
 }
 
 pub fn read_class_code(bus: u8, device: u8, function: u8) -> u32 {
@@ -130,7 +135,7 @@ pub fn read_bus_numbers(bus: u8, device: u8, function: u8) -> u32 {
 }
 
 pub fn is_single_function_device(header_type: u8) -> bool {
-    (header_type & 0x80) == 0
+    !header_type.get_bit(7)
 }
 
 #[derive(Copy, Clone)]
@@ -148,16 +153,6 @@ pub static mut DEVICES: [Device; 32] = [Device {
     header_type: 0,
 }; 32];
 pub static mut NUM_DEVICE: usize = 0;
-
-pub fn device(index: usize) -> &'static Device {
-    unsafe { &DEVICES[index] }
-}
-pub fn devices() -> &'static [Device; 32] {
-    unsafe { &DEVICES }
-}
-pub fn num_device() -> usize {
-    unsafe { NUM_DEVICE }
-}
 
 pub fn scan_all_bus() -> Result<(), Error> {
     unsafe {
