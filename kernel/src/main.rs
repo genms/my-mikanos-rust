@@ -3,22 +3,25 @@
 #![feature(lang_items)]
 #![feature(asm)]
 
-use core::fmt::Write;
-use core::panic::PanicInfo;
-use core::str;
-
 mod asm;
 mod console;
 mod font;
 mod frame_buffer_config;
 mod graphics;
 mod hankaku;
+mod logger;
 mod pci;
 mod utils;
 
+use core::panic::PanicInfo;
+use core::str;
+use log::{Level, LevelFilter};
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
+
 use frame_buffer_config::FrameBufferConfig;
 use graphics::*;
-use utils::fmt::Wrapper;
+use logger::Logger;
 
 #[lang = "eh_personality"]
 extern "C" fn eh_personality() {}
@@ -36,14 +39,17 @@ fn hlt() {
     }
 }
 
+#[macro_export]
 macro_rules! printk {
     ($($x:expr),*) => {
         {
+            use core::fmt::Write;
+
             let mut buf = [0u8; 1024];
-            write!(Wrapper::new(&mut buf), $($x),*).expect("printk!");
-            let txt = str::from_utf8(&buf).unwrap();
+            write!($crate::utils::fmt::Wrapper::new(&mut buf), $($x),*).expect("printk!");
+            let txt = core::str::from_utf8(&buf).unwrap();
             unsafe {
-                CONSOLE.put_string(txt);
+                $crate::CONSOLE.put_string(txt);
             }
         }
     };
@@ -81,6 +87,8 @@ const MOUSE_CURSOR_SHAPE: [&str; 24] = [
     "         @@@   ",
 ];
 
+static mut LOGGER: Logger = Logger::new(Level::Info);
+
 static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
 static mut PIXEL_WRITER: Option<&dyn PixelWriter> = None;
 
@@ -89,6 +97,10 @@ static mut CONSOLE: console::Console = console::Console::new(DESKTOP_FG_COLOR, D
 #[no_mangle]
 pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) -> ! {
     unsafe {
+        log::set_logger(&LOGGER)
+            .map(|()| log::set_max_level(LevelFilter::Trace))
+            .unwrap();
+
         FRAME_BUFFER_CONFIG = Some(frame_buffer_config);
         PIXEL_WRITER = match frame_buffer_config.pixel_format {
             frame_buffer_config::PixelFormat::PixelRGBResv8BitPerColor => {
@@ -150,22 +162,17 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
     }
 
     match pci::scan_all_bus() {
-        Ok(()) => printk!("scan_all_bus: Ok\n"),
-        Err(err) => printk!("scan_all_bus: {}\n", err),
+        Ok(()) => info!("scan_all_bus: Ok\n"),
+        Err(err) => info!("scan_all_bus: {}\n", err),
     };
 
     for i in unsafe { 0..pci::NUM_DEVICE } {
         let dev = unsafe { pci::DEVICES[i] };
         let vendor_id = pci::read_vendor_id(dev.bus, dev.device, dev.function);
         let class_code = pci::read_class_code(dev.bus, dev.device, dev.function);
-        printk!(
+        info!(
             "{}.{}.{}: vend {:04x}, class {:08x}, head {:02x}\n",
-            dev.bus,
-            dev.device,
-            dev.function,
-            vendor_id,
-            class_code,
-            dev.header_type
+            dev.bus, dev.device, dev.function, vendor_id, class_code, dev.header_type
         );
     }
 
