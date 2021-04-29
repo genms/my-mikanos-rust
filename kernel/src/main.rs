@@ -10,14 +10,14 @@ mod frame_buffer_config;
 mod graphics;
 mod hankaku;
 mod logger;
+mod mouse;
 mod pci;
 mod utils;
 
 use core::panic::PanicInfo;
-use core::str;
-use log::{Level, LevelFilter};
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
+use log::{Level, LevelFilter};
 
 use frame_buffer_config::FrameBufferConfig;
 use graphics::*;
@@ -58,41 +58,12 @@ macro_rules! printk {
 const DESKTOP_BG_COLOR: PixelColor = PixelColor::new(45, 118, 237);
 const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 
-//const MOUSE_CURSOR_WIDTH: i32 = 15;
-//const MOUSE_CURSOR_HEIGHT: i32 = 24;
-const MOUSE_CURSOR_SHAPE: [&str; 24] = [
-    "@              ",
-    "@@             ",
-    "@.@            ",
-    "@..@           ",
-    "@...@          ",
-    "@....@         ",
-    "@.....@        ",
-    "@......@       ",
-    "@.......@      ",
-    "@........@     ",
-    "@.........@    ",
-    "@..........@   ",
-    "@...........@  ",
-    "@............@ ",
-    "@......@@@@@@@@",
-    "@......@       ",
-    "@....@@.@      ",
-    "@...@ @.@      ",
-    "@..@   @.@     ",
-    "@.@    @.@     ",
-    "@@      @.@    ",
-    "@       @.@    ",
-    "         @.@   ",
-    "         @@@   ",
-];
-
 static mut LOGGER: Logger = Logger::new(Level::Info);
-
 static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
 static mut PIXEL_WRITER: Option<&dyn PixelWriter> = None;
-
 static mut CONSOLE: console::Console = console::Console::new(DESKTOP_FG_COLOR, DESKTOP_BG_COLOR);
+static mut MOUSE_CURSOR: mouse::MouseCursor =
+    mouse::MouseCursor::new(DESKTOP_BG_COLOR, Vector2D::new(400, 300));
 
 #[no_mangle]
 pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) -> ! {
@@ -141,25 +112,11 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         &PixelColor::new(160, 160, 160),
     );
 
-    printk!("Welcome to MikanOS in Rust!\n");
-
-    for (dy, row) in MOUSE_CURSOR_SHAPE.iter().enumerate() {
-        for (dx, u) in row.as_bytes().iter().enumerate() {
-            match *u as char {
-                '@' => {
-                    pixel_writer.write(200 + dx as i32, 100 + dy as i32, &PixelColor::new(0, 0, 0));
-                }
-                '.' => {
-                    pixel_writer.write(
-                        200 + dx as i32,
-                        100 + dy as i32,
-                        &PixelColor::new(255, 255, 255),
-                    );
-                }
-                _ => {}
-            };
-        }
+    unsafe {
+        MOUSE_CURSOR.refresh();
     }
+
+    printk!("Welcome to MikanOS in Rust!\n");
 
     match pci::scan_all_bus() {
         Ok(()) => info!("scan_all_bus: Ok\n"),

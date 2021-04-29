@@ -1,3 +1,4 @@
+use core::ops::{Add, AddAssign};
 use crate::FRAME_BUFFER_CONFIG;
 
 pub struct PixelColor {
@@ -51,6 +52,7 @@ impl PixelWriter for BGRResv8BitPerColorPixelWriter {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Vector2D<T> {
     pub x: T,
     pub y: T,
@@ -59,6 +61,26 @@ pub struct Vector2D<T> {
 impl<T> Vector2D<T> {
     pub const fn new(x: T, y: T) -> Self {
         Vector2D::<T> { x, y }
+    }
+}
+
+impl<T> Add for Vector2D<T> where T: Add<Output=T> + Copy + Clone {
+    type Output = Vector2D<T>;
+
+    fn add(self, other: Self) -> Self::Output {
+        Vector2D::<T> {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl<T> AddAssign for Vector2D<T> where T: Add<Output=T> + Copy + Clone {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        };
     }
 }
 
