@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -8,14 +9,14 @@ fn main() {
 
     build_hankaku();
     build_asm();
+    build_driver();
 }
 
 fn build_hankaku() {
     let out_dir = env::var("OUT_DIR").unwrap();
 
     println!("cargo:rustc-link-lib=hankaku");
-    println!("cargo:rerun-if-changed=hankaku/makefont.py");
-    println!("cargo:rerun-if-changed=hankaku/hankaku.txt");
+    println!("cargo:rerun-if-changed=hankaku");
 
     Command::new("hankaku/makefont.py")
         .arg("-o")
@@ -45,7 +46,7 @@ fn build_asm() {
     let out_dir = env::var("OUT_DIR").unwrap();
 
     println!("cargo:rustc-link-lib=asm");
-    println!("cargo:rerun-if-changed=asm/asmfunc.asm");
+    println!("cargo:rerun-if-changed=asm");
 
     Command::new("nasm")
         .args(&["-f", "elf64", "-o"])
@@ -61,4 +62,18 @@ fn build_asm() {
         .current_dir(&Path::new(&out_dir))
         .status()
         .unwrap();
+}
+
+fn build_driver() {
+    let out_dir = env::var("OUT_DIR").unwrap();
+
+    println!("cargo:rustc-link-lib=driver");
+    println!("cargo:rerun-if-changed=driver");
+
+    Command::new("make")
+        .current_dir(&Path::new("driver"))
+        .status()
+        .unwrap();
+
+    fs::copy("driver/libdriver.a", out_dir + "/libdriver.a").unwrap();
 }
