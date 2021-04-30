@@ -47,12 +47,15 @@ macro_rules! printk {
 
             let mut buf = [0u8; 1024];
             write!($crate::utils::fmt::Wrapper::new(&mut buf), $($x),*).expect("printk!");
-            let txt = core::str::from_utf8(&buf).unwrap();
-            unsafe {
-                $crate::CONSOLE.put_string(txt);
-            }
+            $crate::_printk(&buf);
         }
     };
+}
+
+fn _printk(buf: &[u8]) {
+    let txt = core::str::from_utf8(buf).unwrap();
+    let console = unsafe { CONSOLE.as_mut().unwrap() };
+    console.put_string(txt);
 }
 
 const DESKTOP_BG_COLOR: PixelColor = PixelColor::new(45, 118, 237);
@@ -60,33 +63,37 @@ const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 
 static mut LOGGER: Logger = Logger::new(Level::Info);
 static mut FRAME_BUFFER_CONFIG: Option<&'static FrameBufferConfig> = None;
-static mut PIXEL_WRITER: Option<&dyn PixelWriter> = None;
-static mut CONSOLE: console::Console = console::Console::new(DESKTOP_FG_COLOR, DESKTOP_BG_COLOR);
-static mut MOUSE_CURSOR: mouse::MouseCursor =
-    mouse::MouseCursor::new(DESKTOP_BG_COLOR, Vector2D::new(400, 300));
+static mut PIXEL_WRITER: Option<PixelWriter> = None;
+static mut CONSOLE: Option<console::Console> = None;
+static mut MOUSE_CURSOR: Option<mouse::MouseCursor> = None;
 
 #[no_mangle]
-pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) -> ! {
+pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     unsafe {
         log::set_logger(&LOGGER)
             .map(|()| log::set_max_level(LevelFilter::Trace))
             .unwrap();
 
-        FRAME_BUFFER_CONFIG = Some(frame_buffer_config);
-        PIXEL_WRITER = match frame_buffer_config.pixel_format {
-            frame_buffer_config::PixelFormat::PixelRGBResv8BitPerColor => {
-                Some(&RGBResv8BitPerColorPixelWriter {})
-            }
-            frame_buffer_config::PixelFormat::PixelBGRResv8BitPerColor => {
-                Some(&BGRResv8BitPerColorPixelWriter {})
-            }
-        };
+        FRAME_BUFFER_CONFIG = Some(fb_config);
+        PIXEL_WRITER = Some(PixelWriter::new(fb_config));
+
+        let pixel_writer = PIXEL_WRITER.as_ref().unwrap();
+        CONSOLE = Some(console::Console::new(
+            pixel_writer,
+            DESKTOP_FG_COLOR,
+            DESKTOP_BG_COLOR,
+        ));
+        MOUSE_CURSOR = Some(mouse::MouseCursor::new(
+            pixel_writer,
+            DESKTOP_BG_COLOR,
+            Vector2D::new(400, 300),
+        ));
     }
 
-    let pixel_writer = unsafe { PIXEL_WRITER.unwrap() };
+    let pixel_writer = unsafe { PIXEL_WRITER.as_ref().unwrap() };
 
-    let frame_width = frame_buffer_config.horizontal_resolution as i32;
-    let frame_height = frame_buffer_config.vertical_resolution as i32;
+    let frame_width = fb_config.horizontal_resolution as i32;
+    let frame_height = fb_config.vertical_resolution as i32;
     fill_rectangle(
         pixel_writer,
         &Vector2D::new(0, 0),
@@ -112,9 +119,8 @@ pub extern "C" fn KernelMain(frame_buffer_config: &'static FrameBufferConfig) ->
         &PixelColor::new(160, 160, 160),
     );
 
-    unsafe {
-        MOUSE_CURSOR.refresh();
-    }
+    let mouse_cursor = unsafe { MOUSE_CURSOR.as_mut().unwrap() };
+    mouse_cursor.refresh();
 
     printk!("Welcome to MikanOS in Rust!\n");
 

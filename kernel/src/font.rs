@@ -18,7 +18,7 @@ fn get_font_slice(c: char) -> Result<&'static [u8; 16], char> {
 }
 
 pub fn write_ascii(
-    writer: &dyn graphics::PixelWriter,
+    writer: &graphics::PixelWriter,
     x: i32,
     y: i32,
     c: char,
@@ -41,7 +41,7 @@ pub fn write_ascii(
 }
 
 pub fn write_string(
-    writer: &dyn graphics::PixelWriter,
+    writer: &graphics::PixelWriter,
     x: i32,
     y: i32,
     s: &str,
