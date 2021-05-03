@@ -1,3 +1,7 @@
+use core::fmt;
+
+#[allow(dead_code)]
+#[derive(Debug)]
 pub enum Code {
     Success,
     Full,
@@ -19,17 +23,18 @@ pub enum Code {
     InvalidPhase,
     UnknownXHCISpeedID,
     NoWaiter,
-    LastOfCode,  // この列挙子は常に最後に配置する
+    LastOfCode, // この列挙子は常に最後に配置する
 }
 
-struct Error {
+#[derive(Debug)]
+pub struct Error {
     code: Code,
-    file: &str,
-    line: i32,
+    file: &'static str,
+    line: u32,
 }
 
 impl Error {
-    pub fn new(code: Code, file: &str, line: i32) -> Self {
+    pub fn new(code: Code, file: &'static str, line: u32) -> Self {
         Error { code, file, line }
     }
 }
@@ -38,4 +43,11 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
+}
+
+#[macro_export]
+macro_rules! make_error {
+    ($x:expr) => {{
+        Error::new(($x), file!(), line!())
+    }};
 }
