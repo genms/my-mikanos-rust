@@ -18,9 +18,10 @@ mod utils;
 
 use bit_field::BitField;
 use core::panic::PanicInfo;
-use log::{Level, LevelFilter};
+use cty::uint64_t;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
+use log::{Level, LevelFilter};
 
 use font::*;
 use frame_buffer_config::FrameBufferConfig;
@@ -125,8 +126,8 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
 
     let pixel_writer = unsafe { PIXEL_WRITER.as_ref().unwrap() };
 
-    let frame_width = fb_config.horizontal_resolution as i32;
-    let frame_height = fb_config.vertical_resolution as i32;
+    let frame_width = fb_config.horizontal_resolution() as i32;
+    let frame_height = fb_config.vertical_resolution() as i32;
     fill_rectangle(
         pixel_writer,
         &Vector2D::new(0, 0),
@@ -226,7 +227,7 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     unsafe {
         driver::SetLogLevel(driver::LogLevel::kDebug);
 
-        let xhc_handle = driver::UsbInitXhc(xhc_mmio_base);
+        let xhc_handle = driver::UsbInitXhc(xhc_mmio_base as uint64_t);
         driver::print_log();
 
         driver::UsbConfigurePort(xhc_handle, mouse_observer);

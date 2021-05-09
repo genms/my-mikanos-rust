@@ -22,7 +22,7 @@ impl PixelWriter {
     pub fn new(config: &'static FrameBufferConfig) -> Self {
         PixelWriter {
             config,
-            write_fn: match config.pixel_format {
+            write_fn: match config.pixel_format() {
                 PixelFormat::PixelRGBResv8BitPerColor => Self::write_rgb,
                 PixelFormat::PixelBGRResv8BitPerColor => Self::write_bgr,
             },
@@ -36,8 +36,8 @@ impl PixelWriter {
     fn pixel_at(&self, x: i32, y: i32) -> *mut u8 {
         unsafe {
             self.config
-                .frame_buffer
-                .offset(4 * (self.config.pixels_per_scan_line as i32 * y + x) as isize)
+                .frame_buffer()
+                .offset(4 * (self.config.pixels_per_scan_line() as i32 * y + x) as isize)
         }
     }
 

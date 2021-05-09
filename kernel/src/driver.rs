@@ -1,8 +1,9 @@
 use crate::printk;
 use cstr_core::{c_char, CStr};
+use cty::{c_int, uint64_t};
 
 type MouseObserverFn = extern "C" fn(i8, i8);
-type XhcHandle = i32;
+type XhcHandle = c_int;
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -16,7 +17,7 @@ pub enum LogLevel {
 
 extern "C" {
     pub fn SetLogLevel(level: LogLevel);
-    pub fn UsbInitXhc(xhc_mmio_base: u64) -> XhcHandle;
+    pub fn UsbInitXhc(xhc_mmio_base: uint64_t) -> XhcHandle;
     pub fn UsbConfigurePort(xhc_handle: XhcHandle, mouse_observer: MouseObserverFn);
     pub fn UsbReceiveEvent(xhc_handle: XhcHandle);
 
