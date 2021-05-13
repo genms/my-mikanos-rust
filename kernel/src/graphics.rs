@@ -1,3 +1,4 @@
+//! 画像描画関連のプログラムを集めたファイル．
 use crate::frame_buffer_config::*;
 use core::ops::{Add, AddAssign};
 

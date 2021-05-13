@@ -23,6 +23,7 @@ pub enum Code {
     InvalidPhase,
     UnknownXHCISpeedID,
     NoWaiter,
+    NoPCIMSI,
     LastOfCode, // この列挙子は常に最後に配置する
 }
 

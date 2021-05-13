@@ -1,21 +1,9 @@
+//! フォント描画のプログラムを集めたファイル.
+use bit_field::BitField;
+use core::str;
+
 use crate::graphics;
 use crate::hankaku;
-
-fn get_font(c: char) -> Result<*mut u8, char> {
-    unsafe {
-        let index = 16 * c as usize;
-        if index >= &hankaku::_binary_hankaku_bin_size as *const u8 as usize {
-            return Err(c);
-        }
-        let start = &hankaku::_binary_hankaku_bin_start as *const u8 as *mut u8;
-        Ok(start.offset(index as isize))
-    }
-}
-
-fn get_font_slice(c: char) -> Result<&'static [u8; 16], char> {
-    let font = get_font(c)?;
-    Ok(unsafe { &*(font as *const [u8; 16]) })
-}
 
 pub fn write_ascii(
     writer: &graphics::PixelWriter,
@@ -24,7 +12,7 @@ pub fn write_ascii(
     c: char,
     color: &graphics::PixelColor,
 ) {
-    let font = match get_font_slice(c) {
+    let font = match hankaku::get_font_slice(c) {
         Ok(ptr) => ptr,
         Err(_) => {
             return;
@@ -32,9 +20,9 @@ pub fn write_ascii(
     };
 
     for (dy, row) in font.iter().enumerate() {
-        for dx in 0..8i32 {
-            if (row << dx) & 0x80u8 != 0 {
-                writer.write(x + dx, y + dy as i32, color);
+        for dx in 0..=7 {
+            if row.get_bit(7 - dx) {
+                writer.write(x + dx as i32, y + dy as i32, color);
             }
         }
     }
@@ -50,4 +38,15 @@ pub fn write_string(
     for (i, c) in s.chars().enumerate() {
         write_ascii(writer, x + 8 * i as i32, y, c, color);
     }
+}
+
+pub fn write_bytes(
+    writer: &graphics::PixelWriter,
+    x: i32,
+    y: i32,
+    bytes: &[u8],
+    color: &graphics::PixelColor,
+) {
+    let s = str::from_utf8(bytes).unwrap_or("?\n");
+    write_string(writer, x, y, s, color);
 }

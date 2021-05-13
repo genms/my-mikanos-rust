@@ -1,5 +1,4 @@
-use core::str;
-
+//! コンソール描画のプログラムを集めたファイル．
 use crate::font;
 use crate::graphics;
 
@@ -37,7 +36,11 @@ impl<'a> Console<'a> {
                 break;
             } else if c == '\n' {
                 self.newline();
-            } else if self.cursor_column < Self::COLUMNS - 1 {
+            } else {
+                if self.cursor_column >= Self::COLUMNS - 1 {
+                    self.newline();
+                }
+
                 font::write_ascii(
                     self.pixel_writer,
                     (8 * self.cursor_column) as i32,
@@ -62,10 +65,15 @@ impl<'a> Console<'a> {
                 }
             }
             for row in 0..(Self::ROWS - 1) {
-                let rng = (row + 1)..(row + 2);
+                let rng = (row + 1)..=(row + 1);
                 self.buffer.copy_within(rng, row);
-                let txt = str::from_utf8(&self.buffer[row]).unwrap();
-                font::write_string(self.pixel_writer, 0, (16 * row) as i32, txt, &self.fg_color);
+                font::write_bytes(
+                    self.pixel_writer,
+                    0,
+                    (16 * row) as i32,
+                    &self.buffer[row],
+                    &self.fg_color,
+                );
             }
             let buffer_last_row = &mut self.buffer[Self::ROWS - 1];
             buffer_last_row.fill(0);

@@ -50,6 +50,10 @@ extern "C" void UsbReceiveEvent(XHC_HANDLE xhc_handle) {
   }
 }
 
+extern "C" bool UsbXhcPrimaryEventRingHasFront() {
+  return xhc->PrimaryEventRing()->HasFront();
+}
+
 extern "C" void __cxa_pure_virtual() {
   while (1) __asm__("hlt");
 }

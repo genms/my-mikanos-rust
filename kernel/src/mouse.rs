@@ -1,3 +1,4 @@
+//! マウス制御プログラム．
 #![allow(dead_code)]
 
 use crate::graphics::*;
