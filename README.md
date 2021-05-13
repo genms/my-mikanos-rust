@@ -4,6 +4,7 @@
 
 ## Build
 ```
+$ cd kernel
 $ source ~/osbook/devenv/buildenv.sh
 $ source ./buildenv.sh
 $ cargo build
