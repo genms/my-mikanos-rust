@@ -19,7 +19,9 @@ mod mouse;
 mod pci;
 mod utils;
 
+use arrayvec::ArrayVec;
 use bit_field::BitField;
+use core::fmt;
 use core::panic::PanicInfo;
 use cty::{uint16_t, uint64_t};
 #[allow(unused_imports)]
@@ -96,11 +98,34 @@ fn switch_ehci_to_xhci(xhc_dev: &pci::Device) {
     );
 }
 
-extern "x86-interrupt" fn int_handler_xhci(_: *const interrupt::InterruptFrame) {
-    unsafe {
-        driver::UsbReceiveEvent(xhc_handle());
-        driver::print_log();
+#[derive(Debug)]
+enum MessageType {
+    InterruptXHCI,
+}
+
+impl fmt::Display for MessageType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
+}
+
+struct Message {
+    msg_type: MessageType,
+}
+
+impl Message {
+    const fn new(msg_type: MessageType) -> Self {
+        Message { msg_type }
+    }
+}
+
+static mut MAIN_QUEUE: ArrayVec<Message, 32> = ArrayVec::<Message, 32>::new_const();
+fn main_queue() -> &'static mut ArrayVec<Message, 32> {
+    unsafe { &mut MAIN_QUEUE }
+}
+
+extern "x86-interrupt" fn int_handler_xhci(_: *const interrupt::InterruptFrame) {
+    main_queue().push(Message::new(MessageType::InterruptXHCI));
     interrupt::notify_end_of_interrupt();
 }
 
@@ -279,6 +304,28 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     }
 
     loop {
-        hlt()
+        unsafe {
+            asm!("cli");
+            if main_queue().len() == 0 {
+                asm!("sti");
+                asm!("hlt");
+                continue;
+            }
+
+            let msg: &Message = main_queue().first().unwrap();
+            main_queue().remove(0);
+            asm!("sti");
+
+            #[allow(unreachable_patterns)]
+            match msg.msg_type {
+                MessageType::InterruptXHCI => {
+                    driver::UsbReceiveEvent(xhc_handle());
+                    driver::print_log();
+                }
+                _ => {
+                    error!("Unknown message type: {}\n", msg.msg_type);
+                }
+            }
+        }
     }
 }
