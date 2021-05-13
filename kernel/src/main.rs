@@ -72,10 +72,9 @@ extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
 
 fn switch_ehci_to_xhci(xhc_dev: &pci::Device) {
     let intel_ehc_exist = || -> bool {
-        for i in 0..pci::num_device() {
-            let device = pci::get_device(i);
-            if device.class_code.match_interface(0x0c, 0x03, 0x20) /* EHCI */ &&
-                            0x8086 == pci::read_vendor_id_from_dev(device)
+        for dev in pci::device() {
+            if dev.class_code.match_interface(0x0c, 0x03, 0x20) /* EHCI */ &&
+                            0x8086 == pci::read_vendor_id_from_dev(dev)
             {
                 return true;
             }
@@ -258,8 +257,7 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     )
     .unwrap();
 
-    let xhc_bar = pci::read_bar(xhc_dev, 0);
-    let xhc_bar = xhc_bar.unwrap_or_else(|e| {
+    let xhc_bar = pci::read_bar(xhc_dev, 0).unwrap_or_else(|e| {
         debug!("read_bar: {}\n", e);
         loop {
             hlt()
