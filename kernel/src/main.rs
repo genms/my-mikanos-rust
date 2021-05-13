@@ -97,10 +97,8 @@ fn switch_ehci_to_xhci(xhc_dev: &pci::Device) {
 
 extern "x86-interrupt" fn int_handler_xhci(_: *const interrupt::InterruptFrame) {
     unsafe {
-        while driver::UsbXhcPrimaryEventRingHasFront() {
-            driver::UsbReceiveEvent(xhc_handle());
-            driver::print_log();
-        }
+        driver::UsbReceiveEvent(xhc_handle());
+        driver::print_log();
     }
     interrupt::notify_end_of_interrupt();
 }

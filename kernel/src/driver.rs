@@ -20,7 +20,6 @@ extern "C" {
     pub fn UsbInitXhc(xhc_mmio_base: uint64_t) -> XhcHandle;
     pub fn UsbConfigurePort(xhc_handle: XhcHandle, mouse_observer: MouseObserverFn);
     pub fn UsbReceiveEvent(xhc_handle: XhcHandle);
-    pub fn UsbXhcPrimaryEventRingHasFront() -> bool;
 
     pub fn GetLog() -> *const c_char;
     pub fn ClearLog();

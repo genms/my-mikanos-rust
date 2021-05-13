@@ -44,14 +44,12 @@ extern "C" void UsbConfigurePort(XHC_HANDLE xhc_handle, MouseObserverType mouse_
 }
 
 extern "C" void UsbReceiveEvent(XHC_HANDLE xhc_handle) {
-  if (auto err = ProcessEvent(*xhc)) {
-    Log(kError, "Error while ProcessEvent: %s at %s:%d\n",
-        err.Name(), err.File(), err.Line());
+  while (xhc->PrimaryEventRing()->HasFront()) {
+    if (auto err = ProcessEvent(*xhc)) {
+      Log(kError, "Error while ProcessEvent: %s at %s:%d\n",
+          err.Name(), err.File(), err.Line());
+    }
   }
-}
-
-extern "C" bool UsbXhcPrimaryEventRingHasFront() {
-  return xhc->PrimaryEventRing()->HasFront();
 }
 
 extern "C" void __cxa_pure_virtual() {
