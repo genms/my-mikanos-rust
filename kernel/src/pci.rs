@@ -6,6 +6,7 @@ use crate::error::{Code, Error};
 use crate::make_error;
 use bit_field::BitField;
 use core::fmt;
+use cty::uint32_t;
 use modular_bitfield::prelude::*;
 
 /// CONFIG_ADDRESS レジスタの IO ポートアドレス
@@ -465,11 +466,11 @@ pub struct MsiCapabilityHeader {
 #[derive(Clone, Copy, Debug)]
 pub struct MsiCapability {
     header: MsiCapabilityHeader,
-    msg_addr: u32,
-    msg_upper_addr: u32,
-    msg_data: u32,
-    mask_bits: u32,
-    pending_bits: u32,
+    msg_addr: uint32_t,
+    msg_upper_addr: uint32_t,
+    msg_data: uint32_t,
+    mask_bits: uint32_t,
+    pending_bits: uint32_t,
 }
 
 /// MSI または MSI-X 割り込みを設定する

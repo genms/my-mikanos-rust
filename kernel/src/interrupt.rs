@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use bit_field::BitField;
-use cty::uint64_t;
+use cty::{uint16_t, uint32_t, uint64_t};
 use modular_bitfield::prelude::*;
 
 #[repr(C)]
@@ -35,12 +35,12 @@ pub struct InterruptDescriptorAttribute {
 #[repr(packed)]
 #[derive(Clone, Copy, Debug)]
 pub struct InterruptDescriptor {
-    offset_low: u16,
-    segment_selector: u16,
+    offset_low: uint16_t,
+    segment_selector: uint16_t,
     attr: InterruptDescriptorAttribute,
-    offset_middle: u16,
-    offset_high: u32,
-    reserved: u32,
+    offset_middle: uint16_t,
+    offset_high: uint32_t,
+    reserved: uint32_t,
 }
 
 impl InterruptDescriptor {
@@ -92,6 +92,7 @@ pub mod vector {
         XHCI = 0x40,
     }
 }
+
 #[repr(packed)]
 pub struct InterruptFrame {
     rip: uint64_t,

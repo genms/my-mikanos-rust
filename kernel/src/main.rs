@@ -35,7 +35,8 @@ use logger::Logger;
 extern "C" fn eh_personality() {}
 
 #[panic_handler]
-fn panic(_: &PanicInfo) -> ! {
+fn panic(panic_info: &PanicInfo) -> ! {
+    printk!("Kernel Panic!\n{}", panic_info);
     loop {
         hlt()
     }
@@ -107,27 +108,27 @@ const DESKTOP_BG_COLOR: PixelColor = PixelColor::new(45, 118, 237);
 const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 
 static mut LOGGER: Logger = Logger::new(Level::Debug);
-pub fn logger() -> &'static Logger {
+fn logger() -> &'static Logger {
     unsafe { &LOGGER }
 }
 
 static mut PIXEL_WRITER: Option<PixelWriter> = None;
-pub fn pixel_writer() -> &'static PixelWriter {
+fn pixel_writer() -> &'static PixelWriter {
     unsafe { PIXEL_WRITER.as_ref().unwrap() }
 }
 
 static mut CONSOLE: Option<console::Console> = None;
-pub fn console() -> &'static mut console::Console<'static> {
+fn console() -> &'static mut console::Console<'static> {
     unsafe { CONSOLE.as_mut().unwrap() }
 }
 
 static mut MOUSE_CURSOR: Option<mouse::MouseCursor> = None;
-pub fn mouse_cursor() -> &'static mut mouse::MouseCursor<'static> {
+fn mouse_cursor() -> &'static mut mouse::MouseCursor<'static> {
     unsafe { MOUSE_CURSOR.as_mut().unwrap() }
 }
 
 static mut XHC_HANDLE: Option<driver::XhcHandle> = None;
-pub fn xhc_handle() -> driver::XhcHandle {
+fn xhc_handle() -> driver::XhcHandle {
     unsafe { XHC_HANDLE.unwrap() }
 }
 
@@ -189,10 +190,8 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
 
     printk!("Welcome to MikanOS in Rust!\n");
 
-    match pci::scan_all_bus() {
-        Ok(()) => debug!("scan_all_bus: Ok\n"),
-        Err(err) => debug!("scan_all_bus: {}\n", err),
-    };
+    pci::scan_all_bus().unwrap();
+    debug!("scan_all_bus: Ok\n");
 
     for dev in pci::device() {
         let vendor_id = pci::read_vendor_id(dev.bus, dev.device, dev.function);
@@ -255,12 +254,7 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     )
     .unwrap();
 
-    let xhc_bar = pci::read_bar(xhc_dev, 0).unwrap_or_else(|e| {
-        debug!("read_bar: {}\n", e);
-        loop {
-            hlt()
-        }
-    });
+    let xhc_bar = pci::read_bar(xhc_dev, 0).unwrap();
     debug!("read_bar: Ok\n");
 
     let mut xhc_mmio_base = xhc_bar;
