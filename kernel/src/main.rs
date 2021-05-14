@@ -66,11 +66,12 @@ macro_rules! printk {
 
 fn _printk(buf: &[u8]) {
     let txt = core::str::from_utf8(buf).unwrap_or("?\n");
-    console().put_string(txt);
+    global::console().put_string(txt);
 }
 
 extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
-    mouse_cursor().move_relative(&Vector2D::new(displacement_x as i32, displacement_y as i32));
+    global::mouse_cursor()
+        .move_relative(&Vector2D::new(displacement_x as i32, displacement_y as i32));
 }
 
 fn switch_ehci_to_xhci(xhc_dev: &pci::Device) {
@@ -99,7 +100,7 @@ fn switch_ehci_to_xhci(xhc_dev: &pci::Device) {
 }
 
 #[derive(Debug)]
-enum MessageType {
+pub enum MessageType {
     InterruptXHCI,
 }
 
@@ -109,7 +110,7 @@ impl fmt::Display for MessageType {
     }
 }
 
-struct Message {
+pub struct Message {
     msg_type: MessageType,
 }
 
@@ -119,59 +120,66 @@ impl Message {
     }
 }
 
-static mut MAIN_QUEUE: ArrayVec<Message, 32> = ArrayVec::<Message, 32>::new_const();
-fn main_queue() -> &'static mut ArrayVec<Message, 32> {
-    unsafe { &mut MAIN_QUEUE }
-}
-
 extern "x86-interrupt" fn int_handler_xhci(_: *const interrupt::InterruptFrame) {
-    main_queue().push(Message::new(MessageType::InterruptXHCI));
+    global::main_queue().push(Message::new(MessageType::InterruptXHCI));
     interrupt::notify_end_of_interrupt();
 }
 
 const DESKTOP_BG_COLOR: PixelColor = PixelColor::new(45, 118, 237);
 const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 
-static mut LOGGER: Logger = Logger::new(Level::Debug);
-fn logger() -> &'static Logger {
-    unsafe { &LOGGER }
-}
+mod global {
+    use crate::*;
 
-static mut PIXEL_WRITER: Option<PixelWriter> = None;
-fn pixel_writer() -> &'static PixelWriter {
-    unsafe { PIXEL_WRITER.as_ref().unwrap() }
-}
+    pub(super) static mut LOGGER: Logger = Logger::new(Level::Debug);
+    pub fn logger() -> &'static Logger {
+        unsafe { &LOGGER }
+    }
 
-static mut CONSOLE: Option<console::Console> = None;
-fn console() -> &'static mut console::Console<'static> {
-    unsafe { CONSOLE.as_mut().unwrap() }
-}
+    pub(super) static mut PIXEL_WRITER: Option<PixelWriter> = None;
+    pub fn pixel_writer() -> &'static PixelWriter {
+        unsafe { PIXEL_WRITER.as_ref().unwrap() }
+    }
 
-static mut MOUSE_CURSOR: Option<mouse::MouseCursor> = None;
-fn mouse_cursor() -> &'static mut mouse::MouseCursor<'static> {
-    unsafe { MOUSE_CURSOR.as_mut().unwrap() }
-}
+    pub(super) static mut CONSOLE: Option<console::Console> = None;
+    pub fn console() -> &'static mut console::Console<'static> {
+        unsafe { CONSOLE.as_mut().unwrap() }
+    }
 
-static mut XHC_HANDLE: Option<driver::XhcHandle> = None;
-fn xhc_handle() -> driver::XhcHandle {
-    unsafe { XHC_HANDLE.unwrap() }
+    pub(super) static mut MOUSE_CURSOR: Option<mouse::MouseCursor> = None;
+    pub fn mouse_cursor() -> &'static mut mouse::MouseCursor<'static> {
+        unsafe { MOUSE_CURSOR.as_mut().unwrap() }
+    }
+
+    pub(super) static mut XHC_HANDLE: Option<driver::XhcHandle> = None;
+    pub fn xhc_handle() -> driver::XhcHandle {
+        unsafe { XHC_HANDLE.unwrap() }
+    }
+
+    pub(super) static mut MAIN_QUEUE: ArrayVec<Message, 32> = ArrayVec::<Message, 32>::new_const();
+    pub fn main_queue() -> &'static mut ArrayVec<Message, 32> {
+        unsafe { &mut MAIN_QUEUE }
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
+    let pixel_writer: &PixelWriter;
     unsafe {
-        log::set_logger(logger())
+        log::set_logger(global::logger())
             .map(|()| log::set_max_level(LevelFilter::Trace))
             .unwrap();
 
-        PIXEL_WRITER = Some(PixelWriter::new(fb_config));
-        CONSOLE = Some(console::Console::new(
-            pixel_writer(),
+        global::PIXEL_WRITER = Some(PixelWriter::new(fb_config));
+        pixel_writer = global::pixel_writer();
+
+        global::CONSOLE = Some(console::Console::new(
+            pixel_writer,
             DESKTOP_FG_COLOR,
             DESKTOP_BG_COLOR,
         ));
-        MOUSE_CURSOR = Some(mouse::MouseCursor::new(
-            pixel_writer(),
+        global::MOUSE_CURSOR = Some(mouse::MouseCursor::new(
+            pixel_writer,
             DESKTOP_BG_COLOR,
             Vector2D::new(400, 300),
         ));
@@ -180,38 +188,38 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     let frame_width = fb_config.horizontal_resolution() as i32;
     let frame_height = fb_config.vertical_resolution() as i32;
     fill_rectangle(
-        pixel_writer(),
+        pixel_writer,
         &Vector2D::new(0, 0),
         &Vector2D::new(frame_width, frame_height - 50),
         &DESKTOP_BG_COLOR,
     );
     fill_rectangle(
-        pixel_writer(),
+        pixel_writer,
         &Vector2D::new(0, frame_height - 50),
         &Vector2D::new(frame_width, 50),
         &PixelColor::new(1, 8, 17),
     );
     fill_rectangle(
-        pixel_writer(),
+        pixel_writer,
         &Vector2D::new(0, frame_height - 50),
         &Vector2D::new(frame_width / 5, 50),
         &PixelColor::new(80, 80, 80),
     );
     draw_rectangle(
-        pixel_writer(),
+        pixel_writer,
         &Vector2D::new(10, frame_height - 40),
         &Vector2D::new(30, 30),
         &PixelColor::new(160, 160, 160),
     );
     write_string(
-        pixel_writer(),
+        pixel_writer,
         660,
         566,
         "my-mikanos-rust",
         &PixelColor::new(160, 160, 160),
     );
 
-    mouse_cursor().refresh();
+    global::mouse_cursor().refresh();
 
     printk!("Welcome to MikanOS in Rust!\n");
 
@@ -295,7 +303,7 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
 
         let xhc_handle = driver::UsbInitXhc(xhc_mmio_base);
         driver::print_log();
-        XHC_HANDLE = Some(xhc_handle);
+        global::XHC_HANDLE = Some(xhc_handle);
 
         asm!("sti");
 
@@ -306,20 +314,20 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
     loop {
         unsafe {
             asm!("cli");
-            if main_queue().len() == 0 {
+            let main_queue = global::main_queue();
+            if main_queue.len() == 0 {
                 asm!("sti");
                 asm!("hlt");
                 continue;
             }
 
-            let msg: &Message = main_queue().first().unwrap();
-            main_queue().remove(0);
+            let msg: Message = main_queue.remove(0);
             asm!("sti");
 
             #[allow(unreachable_patterns)]
             match msg.msg_type {
                 MessageType::InterruptXHCI => {
-                    driver::UsbReceiveEvent(xhc_handle());
+                    driver::UsbReceiveEvent(global::xhc_handle());
                     driver::print_log();
                 }
                 _ => {
