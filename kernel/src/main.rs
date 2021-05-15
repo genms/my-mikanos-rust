@@ -15,9 +15,14 @@ mod graphics;
 mod hankaku;
 mod interrupt;
 mod logger;
+mod memory_map;
 mod mouse;
 mod pci;
 mod utils;
+
+extern crate num;
+#[macro_use]
+extern crate num_derive;
 
 use arrayvec::ArrayVec;
 use bit_field::BitField;
@@ -32,6 +37,7 @@ use font::*;
 use frame_buffer_config::FrameBufferConfig;
 use graphics::*;
 use logger::Logger;
+use memory_map::*;
 
 #[lang = "eh_personality"]
 extern "C" fn eh_personality() {}
@@ -131,9 +137,9 @@ const DESKTOP_FG_COLOR: PixelColor = PixelColor::new(255, 255, 255);
 mod global {
     use crate::*;
 
-    pub(super) static mut LOGGER: Logger = Logger::new(Level::Debug);
-    pub fn logger() -> &'static Logger {
-        unsafe { &LOGGER }
+    pub(super) static mut LOGGER: Logger = Logger::new(Level::Warn);
+    pub fn logger() -> &'static mut Logger {
+        unsafe { &mut LOGGER }
     }
 
     pub(super) static mut PIXEL_WRITER: Option<PixelWriter> = None;
@@ -163,7 +169,10 @@ mod global {
 }
 
 #[no_mangle]
-pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
+pub extern "C" fn KernelMain(
+    fb_config: &'static FrameBufferConfig,
+    memory_map: &'static MemoryMap,
+) -> ! {
     let pixel_writer: &PixelWriter;
     unsafe {
         log::set_logger(global::logger())
@@ -219,9 +228,35 @@ pub extern "C" fn KernelMain(fb_config: &'static FrameBufferConfig) -> ! {
         &PixelColor::new(160, 160, 160),
     );
 
-    global::mouse_cursor().refresh();
-
     printk!("Welcome to MikanOS in Rust!\n");
+
+    const AVAILABLE_MEMORY_TYPES: [MemoryType; 3] = [
+        MemoryType::EfiBootServicesCode,
+        MemoryType::EfiBootServicesData,
+        MemoryType::EfiConventionalMemory,
+    ];
+
+    printk!("memory_map: {:p}\n", memory_map);
+    let mut buffer_ptr = memory_map.buffer;
+    while (buffer_ptr as usize as u64) < memory_map.buffer as usize as u64 + memory_map.map_size {
+        let desc = unsafe { &*(buffer_ptr as *const MemoryDescriptor) };
+        let md_type: MemoryType = num::FromPrimitive::from_u32(desc.md_type).unwrap();
+        if AVAILABLE_MEMORY_TYPES.contains(&md_type) {
+            printk!(
+                "type = {}, phys = {:08x} - {:08x}, pages = {}, attr = {:08x}\n",
+                desc.md_type,
+                desc.physical_start as u64,
+                desc.physical_start as u64 + desc.number_of_pages * 4096 - 1,
+                desc.number_of_pages,
+                desc.attribute
+            );
+        }
+        unsafe {
+            buffer_ptr = buffer_ptr.offset(memory_map.descriptor_size as isize);
+        }
+    }
+
+    global::mouse_cursor().refresh();
 
     pci::scan_all_bus().unwrap();
     debug!("scan_all_bus: Ok\n");
